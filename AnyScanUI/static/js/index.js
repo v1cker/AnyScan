@@ -27,6 +27,10 @@ var cms_scan_ids;
 var poc_url_interval;
 // 定义POC执行日志轮询任务
 var poc_exec_log_interval;
+// 自动进行poc检测的任务id列表
+var auto_poc_id_list = [];
+// 自动进行poc检测的轮询任务
+var auto_poc_exec_log_interval;
 
 $(function() {
     var $table = $('#overview');
@@ -468,6 +472,141 @@ $(function() {
         }
     });
 
+    // cms poc漏洞扫描任务table
+    $('#cms_poc_auto_task_table').bootstrapTable({
+        url: "/AnyScanUI/auto_poc_data/",
+        method:"post",
+        dataType: "json",
+        pagination: true, //分页
+        contentType: "application/x-www-form-urlencoded",
+        singleSelect: false,
+        search: true, //显示搜索框
+        striped: true,  //表格显示条纹
+        pagination: true, //启动分页
+        pageSize: 10,  //每页显示的记录数
+        pageNumber:1, //当前第几页
+        pageList: [10, 20, 30, 40],  //记录数可选列表
+        showRefresh:true,
+        columns: [
+            {
+                title: '目标站点',
+                field: 'target',
+                align: 'center',
+                valign: 'middle'
+            },
+            {
+                  title: 'poc总量',
+                  field: 'poc_size',
+                  align: 'center',
+                  valign: 'middle'
+            },
+            {
+                  title: '线程数量',
+                  field: 'threads',
+                  align: 'center',
+                  valign: 'middle'
+            },
+            {
+                  title: '状态',
+                  field: 'status',
+                  align: 'center',
+                  valign: 'middle'
+            },
+            {
+                  title: '日志',
+                  field: 'log',
+                  align: 'center',
+                  valign: 'middle'
+            },
+            {
+                  title: '开始时间',
+                  field: 'start_time',
+                  align: 'center'
+            },
+            {
+                  title: '结束时间',
+                  field: 'end_time',
+                  align: 'center'
+            },
+            {
+                  title: '进度',
+                  field: 'progress',
+                  align: 'center'
+            },
+            {
+                  title: '操作',
+                  align: 'center',
+                  formatter:function(value,row,index){
+                      var read = '<button type="button" class="btn btn-primary btn-xs" data-toggle="modal" data-target="#auto_poc_data_chil_dialog" onclick="cms_poc_auto_read(\''+ row.id + '\' , \'' +row.status + '\')">查看</button> ';
+                      var stop = '<button type="button" class="btn btn-warning btn-xs" onclick="cms_poc_auto_stop(\''+ row.id + '\' , \'' +row.status + '\')">停止</button> ';
+                      var del = '<button type="button" class="btn btn-danger btn-xs" onclick="cms_poc_auto_del(\''+ row.id + '\' , \'' +row.status + '\')">删除</button> ';
+                      return read+stop+del;
+                  }
+            }
+        ],
+        onLoadSuccess:function(data){
+            //alert(JSON.stringify(data));
+        },
+        onLoadError:function(data){
+            //alert(data);
+        }
+    });
+
+    // cms poc漏洞扫描任务，子任务table
+    $('#cms_poc_auto_task_chil_table').bootstrapTable({
+        url: "/AnyScanUI/auto_poc_data_chil/",
+        method:"post",
+        dataType: "json",
+        pagination: true, //分页
+        contentType: "application/x-www-form-urlencoded",
+        singleSelect: false,
+        search: true, //显示搜索框
+        striped: true,  //表格显示条纹
+        pagination: true, //启动分页
+        pageSize: 10,  //每页显示的记录数
+        pageNumber:1, //当前第几页
+        pageList: [10, 20, 30, 40],  //记录数可选列表
+        showRefresh:true,
+        columns: [
+            {
+                title: '目标站点',
+                field: 'target',
+                align: 'center',
+                valign: 'middle'
+            },
+            {
+                  title: 'poc总量',
+                  field: 'poc_size',
+                  align: 'center',
+                  valign: 'middle'
+            },
+            {
+                  title: 'poc类型',
+                  field: 'poc_type',
+                  align: 'center',
+                  valign: 'middle'
+            },
+            {
+                  title: 'poc',
+                  field: 'poc_name',
+                  align: 'center',
+                  valign: 'middle'
+            },
+            {
+                  title: '日志',
+                  field: 'log',
+                  align: 'center',
+                  valign: 'middle'
+            }
+        ],
+        onLoadSuccess:function(data){
+            //alert(JSON.stringify(data));
+        },
+        onLoadError:function(data){
+            //alert(data);
+        }
+    });
+
     /**
      * sqlmap扫描停止按钮绑定事件
      */
@@ -874,17 +1013,46 @@ $(function() {
         })
     });
 
+    // poc扫描开始
     $('#poc_auto_cms_start').click(function() {
-        //$("#poc_auto_cms_start").addClass('disabled');
+        $("#poc_auto_cms_start").addClass('disabled');
+        $("#poc_auto_cms_stop").removeClass('disabled');
         var target = $("#poc_auto_cms_input").val();
 
         var data = {"target":target};
         $.ajax({
             type: 'POST',
-            url: "/AnyScanUI/auto_poc/",
+            url: "/AnyScanUI/auto_poc_start/",
+            data: JSON.stringify(data),
+            success: function(data, status){
+                auto_poc_id_list = data["id_list"];
+                auto_poc_exec_log_interval = setInterval(function () {
+                    auto_poc_exec_log(auto_poc_id_list);
+                }, 1000);
+            },
+            error: function(data,status){
+                $("#poc_auto_cms_start").removeClass('disabled');
+                $("#poc_auto_cms_stop").removeClass('disabled');
+            },
+            dataType: "json"
+        });
+    });
+    // poc扫描结束
+    $('#poc_auto_cms_stop').click(function() {
+        $("#poc_auto_cms_start").removeClass('disabled');
+        $("#poc_auto_cms_stop").addClass('disabled');
+
+        var data = {"id_list":auto_poc_id_list};
+        $.ajax({
+            type: 'POST',
+            url: "/AnyScanUI/auto_poc_stop/",
             data: JSON.stringify(data),
             success: function(data, status){
 
+            },
+            error: function(data,status){
+                $("#poc_auto_cms_start").removeClass('disabled');
+                $("#poc_auto_cms_stop").removeClass('disabled');
             },
             dataType: "json"
         });
@@ -1400,6 +1568,96 @@ function cms_scan_del_func(id,status){
             dataType: "json"
         });
     } else {
+
     }
 
+}
+
+/**
+ * poc自动检测日志刷新
+ * @param id_list
+ */
+function auto_poc_exec_log(id_list){
+    $.ajax({
+        type: 'POST',
+        url: "/AnyScanUI/auto_poc_log/",
+        data: JSON.stringify({"id_list":id_list}),
+        success: function(data, status){
+            if (data["status"] != true || data["run_status"] != "running"){
+                clearInterval(auto_poc_exec_log_interval);
+
+            }
+            $("#auto_poc_log").html(data["data"]);
+        },
+        dataType: "json"
+    });
+}
+
+/**
+ * cms poc执行任务，查看子任务，里面有目标网站的漏洞详情
+ * @param id
+ * @param status
+ */
+function cms_poc_auto_read(id,status){
+    $.ajax({
+        type: 'POST',
+        url: "/AnyScanUI/auto_poc_data_chil/",
+        data: JSON.stringify({"id":id}),
+        success: function(data, status){
+            $("#cms_poc_auto_task_chil_table").bootstrapTable('load',data["rows"]);
+        },
+        dataType: "json"
+    });
+}
+
+/**
+ * cms poc执行任务，停止任务
+ * @param id
+ * @param status
+ */
+function cms_poc_auto_stop(id,status){
+    // 判断当前任务状态，如果任务已完成，不发送ajax
+    if (status != "running"){
+        alert("当前任务已停止，不可暂停！");
+        return;
+    }
+    var data = {'id_list':auto_poc_id_list};
+    $.ajax({
+        type: 'POST',
+        url: "/AnyScanUI/auto_poc_stop/",
+        data: JSON.stringify(data),
+        success: function(data, status){
+            $('#cms_poc_auto_task_table').bootstrapTable('refresh');
+        },
+        error: function(data,status){
+
+        },
+        dataType: "json"
+    });
+}
+
+/**
+ * cms poc执行任务，删除任务
+ * @param id
+ * @param status
+ */
+function cms_poc_auto_del(id,status){
+    // 判断当前任务状态，如果任务已完成，不发送ajax
+    if (status == "running"){
+        alert("当前任务正在运行，不可删除！");
+        return;
+    }
+    var data = {'id_list':[id]};
+    $.ajax({
+        type: 'POST',
+        url: "/AnyScanUI/auto_poc_del/",
+        data: JSON.stringify(data),
+        success: function(data, status){
+            $('#cms_poc_auto_task_table').bootstrapTable('refresh');
+        },
+        error: function(data,status){
+
+        },
+        dataType: "json"
+    });
 }

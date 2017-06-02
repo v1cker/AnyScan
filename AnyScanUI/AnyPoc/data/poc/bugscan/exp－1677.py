@@ -45,6 +45,7 @@ sub
         if code2== 200 and 'testvul_test' in body2:
             security_hole(url)
 
-if __name__ == '__main__':
+
+            return arg
+if __name__== '__main__':
     from dummy import *
-    audit(assign('whezeip', 'http://www.gxdot.gov.cn/')[1])

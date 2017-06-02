@@ -52,6 +52,7 @@ def audit(arg):
     if (code == 200) and 'root:' in res:
         security_hole('command execution: ' + arg + 'function/ssh/file_ssh_exec.php?action=get_real_content&lines=1&page_num=1&id='+exec_id)
     
-if __name__ == '__main__':
+
+        return arg
+if __name__== '__main__':
     from dummy import *
-    audit(assign('topsec','https://www.njfyjf.com/')[1])

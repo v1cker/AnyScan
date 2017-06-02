@@ -54,7 +54,13 @@ urlpatterns = [
     url(r'^poc_main_list/$', epocview.poc_main_list, name ='poc_main_list'),
     url(r'^poc_chil_list/$', epocview.poc_chil_list, name ='poc_chil_list'),
     url(r'^epoc_upload/$', epocview.epoc_upload, name ='epoc_upload'),
-    url(r'^auto_poc/$', autopocview.auto_poc, name ='auto_poc'),
+    url(r'^auto_poc_start/$', autopocview.auto_poc_start, name ='auto_poc_start'),
+    url(r'^auto_poc_stop/$', autopocview.auto_poc_stop, name ='auto_poc_stop'),
+    url(r'^auto_poc_log/$', autopocview.auto_poc_log, name ='auto_poc_log'),
+    url(r'^auto_poc_data/$', autopocview.auto_poc_data, name ='auto_poc_data'),
+    url(r'^auto_poc_data_chil/$', autopocview.auto_poc_data_chil, name ='auto_poc_data_chil'),
+    url(r'^auto_poc_del/$', autopocview.auto_poc_del, name ='auto_poc_del'),
+
 
 
 ]
